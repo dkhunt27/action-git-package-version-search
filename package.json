@@ -7,13 +7,10 @@
     "type": "git",
     "url": "git+https://github.com/dkhunt27/action-git-package-version-search.git"
   },
-  "bugs": {
-    "url": "https://github.com/actions/typescript-action/issues"
-  },
   "keywords": [
     "actions",
-    "node",
-    "setup"
+    "git",
+    "package"
   ],
   "exports": {
     ".": "./dist/index.js"
