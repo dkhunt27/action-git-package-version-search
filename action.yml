@@ -27,5 +27,5 @@ outputs:
     description: 'true/false if package version existed or not'
 
 runs:
-  using: node18
+  using: node20
   main: dist/index.js
