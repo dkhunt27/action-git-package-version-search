@@ -1,0 +1,10 @@
+{
+  "depcheck": 
+  {
+    "ignoreMatches": 
+    [
+      "@types/*",
+      "yorkie"
+    ]
+  }
+}
