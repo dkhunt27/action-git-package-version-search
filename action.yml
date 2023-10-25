@@ -1,6 +1,7 @@
 name: 'Git Package Version Search'
 description: 'Git action that searches for a published version of a package'
 author: 'dkhunt27'
+icon: arrow-up-circle
 
 # Define your inputs here.
 inputs:
