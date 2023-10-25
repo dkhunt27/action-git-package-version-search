@@ -1,6 +1,6 @@
-name: 'The name of your action here'
-description: 'Provide a description here'
-author: 'Your name or organization here'
+name: 'Git Package Version Search'
+description: 'Git action that searches for a published version of a package'
+author: 'dkhunt27'
 
 # Define your inputs here.
 inputs:
