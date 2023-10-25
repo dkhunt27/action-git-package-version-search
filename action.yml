@@ -4,15 +4,27 @@ author: 'Your name or organization here'
 
 # Define your inputs here.
 inputs:
-  milliseconds:
-    description: 'Your input description here'
+  token:
+    description: 'Git token with read:packages access'
     required: true
-    default: '1000'
+  org:
+    description: 'Git org for the package'
+    required: true
+  packageName:
+    description: 'Name of the package'
+    required: true
+  packageVersion:
+    description: 'Version of the package'
+    required: true
+  errorIfExists:
+    description: 'If package exists, throw error'
+    required: true
+    type: boolean
 
 # Define your outputs here.
 outputs:
-  time:
-    description: 'Your output description here'
+  PackageVersionExist:
+    description: 'true/false if package version existed or not'
 
 runs:
   using: node20
