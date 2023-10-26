@@ -17,10 +17,17 @@ export async function versionSearch(params: {
   org: string
   packageName: string
   packageVersion: string
-  errorIfExists: boolean
-}): Promise<boolean> {
-  const {token, org, packageName, packageVersion, errorIfExists} = params
-  let packageVersionExist = false
+  ifExistsErrorDeleteOrNothing: 'error' | 'delete' | 'nothing'
+}): Promise<{packageVersionExisted: boolean; packageVersionDeleted: boolean}> {
+  const {
+    token,
+    org,
+    packageName,
+    packageVersion,
+    ifExistsErrorDeleteOrNothing
+  } = params
+  let packageVersionExisted = false
+  let packageVersionDeleted = false
 
   let logKey = JSON.stringify({org, packageName})
 
@@ -50,14 +57,24 @@ export async function versionSearch(params: {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const found = results.data.find((item: any) => item.name === packageVersion)
 
-    packageVersionExist = !!found
+    packageVersionExisted = !!found
 
-    if (packageVersionExist) {
-      logInfo(`Package version already exists`)
+    if (found) {
+      logKey = JSON.stringify({org, packageName, packageVersion})
+      logInfo(`Package version already exists: ${logKey}`)
 
-      if (errorIfExists) {
-        logKey = JSON.stringify({org, packageName, packageVersion})
+      if (ifExistsErrorDeleteOrNothing === 'error') {
         throw new Error(`Package version exists: ${logKey}`)
+      } else if (ifExistsErrorDeleteOrNothing === 'delete') {
+        logWarn(`Deleting existing package: ${logKey}`)
+
+        await github.packages.deletePackageVersionForOrg({
+          package_type: 'npm',
+          package_name: packageName,
+          org,
+          package_version_id: found.id
+        })
+        packageVersionDeleted = true
       }
     } else {
       logInfo(`New version does not exist in published versions`)
@@ -69,7 +86,7 @@ export async function versionSearch(params: {
       case 404:
         logKey = JSON.stringify({org, packageName})
         logInfo(`There are NO published versions for this package: ${logKey}`)
-        packageVersionExist = false
+        packageVersionExisted = false
         break
       case 401:
         logKey = JSON.stringify({org, tokenFirst4: token.substring(0, 4)})
@@ -85,6 +102,7 @@ export async function versionSearch(params: {
     }
   }
 
-  setOutput('PackageVersionExist', packageVersionExist)
-  return packageVersionExist
+  setOutput('PackageVersionExisted', packageVersionExisted)
+  setOutput('PackageVersionDeleted', packageVersionDeleted)
+  return {packageVersionExisted, packageVersionDeleted}
 }

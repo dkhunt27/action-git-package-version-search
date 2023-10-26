@@ -16,15 +16,17 @@ inputs:
   packageVersion:
     description: 'Version of the package'
     required: true
-  errorIfExists:
-    description: 'If package exists, throw error'
+  ifExistsErrorDeleteOrNothing:
+    description: '"error": throw error if package exist; "delete": delete the package if exist; "nothing": do nothing if package exist'
     required: true
-    type: boolean
+    type: string
 
 # Define your outputs here.
 outputs:
-  PackageVersionExist:
+  PackageVersionExisted:
     description: 'true/false if package version existed or not'
+  PackageVersionDeleted:
+    description: 'true/false if package version was deleted or not'
 
 runs:
   using: node20

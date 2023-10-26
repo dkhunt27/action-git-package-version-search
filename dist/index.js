@@ -47005,13 +47005,18 @@ async function run() {
         const org = core.getInput('org');
         const packageName = core.getInput('packageName');
         const packageVersion = core.getInput('packageVersion');
-        const errorIfExists = core.getBooleanInput('errorIfExists');
+        const ifExistsErrorDeleteOrNothing = core.getInput('ifExistsErrorDeleteOrNothing');
+        if (ifExistsErrorDeleteOrNothing !== 'error' &&
+            ifExistsErrorDeleteOrNothing !== 'delete' &&
+            ifExistsErrorDeleteOrNothing !== 'nothing') {
+            throw new Error(`ifExistsErrorDeleteOrNothing (${ifExistsErrorDeleteOrNothing}) must be "error", "delete", or "nothing"`);
+        }
         const params = {
             token,
             org,
             packageName,
             packageVersion,
-            errorIfExists
+            ifExistsErrorDeleteOrNothing: ifExistsErrorDeleteOrNothing
         };
         // Log the current timestamp, wait, then log the new timestamp
         core.debug(new Date().toTimeString());
@@ -47046,8 +47051,9 @@ const lodash_1 = __nccwpck_require__(250);
  * @returns {Promise<string>} Resolves with 'done!' after the wait is over.
  */
 async function versionSearch(params) {
-    const { token, org, packageName, packageVersion, errorIfExists } = params;
-    let packageVersionExist = false;
+    const { token, org, packageName, packageVersion, ifExistsErrorDeleteOrNothing } = params;
+    let packageVersionExisted = false;
+    let packageVersionDeleted = false;
     let logKey = JSON.stringify({ org, packageName });
     (0, core_1.info)(`Searching for package version: ${logKey}`);
     const github = (0, github_1.getOctokit)(token).rest;
@@ -47067,12 +47073,22 @@ async function versionSearch(params) {
         (0, core_1.info)(`Checking if version exist in published versions`);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const found = results.data.find((item) => item.name === packageVersion);
-        packageVersionExist = !!found;
-        if (packageVersionExist) {
-            (0, core_1.info)(`Package version already exists`);
-            if (errorIfExists) {
-                logKey = JSON.stringify({ org, packageName, packageVersion });
+        packageVersionExisted = !!found;
+        if (found) {
+            logKey = JSON.stringify({ org, packageName, packageVersion });
+            (0, core_1.info)(`Package version already exists: ${logKey}`);
+            if (ifExistsErrorDeleteOrNothing === 'error') {
                 throw new Error(`Package version exists: ${logKey}`);
+            }
+            else if (ifExistsErrorDeleteOrNothing === 'delete') {
+                (0, core_1.warning)(`Deleting existing package: ${logKey}`);
+                await github.packages.deletePackageVersionForOrg({
+                    package_type: 'npm',
+                    package_name: packageName,
+                    org,
+                    package_version_id: found.id
+                });
+                packageVersionDeleted = true;
             }
         }
         else {
@@ -47085,7 +47101,7 @@ async function versionSearch(params) {
             case 404:
                 logKey = JSON.stringify({ org, packageName });
                 (0, core_1.info)(`There are NO published versions for this package: ${logKey}`);
-                packageVersionExist = false;
+                packageVersionExisted = false;
                 break;
             case 401:
                 logKey = JSON.stringify({ org, tokenFirst4: token.substring(0, 4) });
@@ -47098,8 +47114,9 @@ async function versionSearch(params) {
                 throw err;
         }
     }
-    (0, core_1.setOutput)('PackageVersionExist', packageVersionExist);
-    return packageVersionExist;
+    (0, core_1.setOutput)('PackageVersionExisted', packageVersionExisted);
+    (0, core_1.setOutput)('PackageVersionDeleted', packageVersionDeleted);
+    return { packageVersionExisted, packageVersionDeleted };
 }
 exports.versionSearch = versionSearch;
 

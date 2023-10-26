@@ -3,12 +3,22 @@ import {versionSearch} from '../src/version-search'
 
 describe('version-search.ts', () => {
   let getAllPackageVersionsForPackageOwnedByOrgMock = jest.fn()
+  let deletePackageVersionForOrgMock = jest.fn()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let mockData: any
   const getOctokitMock = jest.spyOn(github, 'getOctokit')
+  let params: {
+    token: string
+    org: string
+    packageName: string
+    packageVersion: string
+    ifExistsErrorDeleteOrNothing: 'error' | 'delete' | 'nothing'
+  }
 
   beforeEach(() => {
     getAllPackageVersionsForPackageOwnedByOrgMock = jest.fn()
+    deletePackageVersionForOrgMock = jest.fn()
+
     mockData = {
       status: 200,
       url: 'https://api.github.com/orgs/SomeOrg/packages/npm/SomePackage/versions',
@@ -71,6 +81,7 @@ describe('version-search.ts', () => {
       return {
         rest: {
           packages: {
+            deletePackageVersionForOrg: deletePackageVersionForOrgMock,
             getAllPackageVersionsForPackageOwnedByOrg:
               getAllPackageVersionsForPackageOwnedByOrgMock
           }
@@ -79,83 +90,178 @@ describe('version-search.ts', () => {
     })
   })
 
-  it('when package found and version not found, should return true', async () => {
-    getAllPackageVersionsForPackageOwnedByOrgMock.mockResolvedValue(mockData)
+  describe('when token is bad', () => {
+    beforeEach(() => {
+      getAllPackageVersionsForPackageOwnedByOrgMock.mockImplementation(() => {
+        // eslint-disable-next-line no-throw-literal
+        throw {status: 401, message: 'Http Error: Bad credentials'}
+      })
 
-    const params = {
-      token: 'someToken',
-      org: 'SomeOrg',
-      packageName: 'SomePackage',
-      packageVersion: '0.61.1',
-      errorIfExists: false
-    }
-    const actual = await versionSearch(params)
-    expect(actual).toBe(true)
-  })
-
-  it('when package found and version not found and errorIfExists, should throw error', async () => {
-    getAllPackageVersionsForPackageOwnedByOrgMock.mockResolvedValue(mockData)
-
-    const params = {
-      token: 'someToken',
-      org: 'SomeOrg',
-      packageName: 'SomePackage',
-      packageVersion: '0.61.1',
-      errorIfExists: true
-    }
-
-    await expect(async () => versionSearch(params)).rejects.toThrow(
-      'Package version exists'
-    )
-  })
-
-  it('when package found but version not found, should return false', async () => {
-    getAllPackageVersionsForPackageOwnedByOrgMock.mockResolvedValue(mockData)
-
-    const params = {
-      token: 'someToken',
-      org: 'SomeOrg',
-      packageName: 'SomePackage',
-      packageVersion: '0.0.0',
-      errorIfExists: false
-    }
-    const actual = await versionSearch(params)
-    expect(actual).toBe(false)
-  })
-
-  it('when package not found, should return false', async () => {
-    getAllPackageVersionsForPackageOwnedByOrgMock.mockImplementation(() => {
-      // eslint-disable-next-line no-throw-literal
-      throw {status: 404, message: 'Http Error: Not Found'}
+      params = {
+        token: 'someToken',
+        org: 'nonExistentOrg',
+        packageName: 'nonExistentPackage',
+        packageVersion: '0.0.0',
+        ifExistsErrorDeleteOrNothing: 'nothing'
+      }
     })
 
-    const params = {
-      token: 'someToken',
-      org: 'nonExistentOrg',
-      packageName: 'nonExistentPackage',
-      packageVersion: '0.0.0',
-      errorIfExists: false
-    }
-    const actual = await versionSearch(params)
-    expect(actual).toBe(false)
+    it('should return {packageVersionExisted: false, packageVersionDeleted: false}', async () => {
+      await expect(async () => versionSearch(params)).rejects.toEqual({
+        message: 'Http Error: Bad credentials',
+        status: 401
+      })
+
+      expect(
+        getAllPackageVersionsForPackageOwnedByOrgMock
+      ).toHaveBeenCalledTimes(1)
+      expect(deletePackageVersionForOrgMock).toHaveBeenCalledTimes(0)
+    })
   })
 
-  it('when token is bad, should return error', async () => {
-    getAllPackageVersionsForPackageOwnedByOrgMock.mockImplementation(() => {
-      // eslint-disable-next-line no-throw-literal
-      throw {status: 401, message: 'Http Error: Bad credentials'}
+  describe('when package not found', () => {
+    beforeEach(() => {
+      getAllPackageVersionsForPackageOwnedByOrgMock.mockImplementation(() => {
+        // eslint-disable-next-line no-throw-literal
+        throw {status: 404, message: 'Http Error: Not Found'}
+      })
+
+      params = {
+        token: 'someToken',
+        org: 'nonExistentOrg',
+        packageName: 'nonExistentPackage',
+        packageVersion: '0.0.0',
+        ifExistsErrorDeleteOrNothing: 'nothing'
+      }
     })
 
-    const params = {
-      token: 'someToken',
-      org: 'SomeOrg',
-      packageName: 'SomePackage',
-      packageVersion: '0.0.0',
-      errorIfExists: false
-    }
-    await expect(async () => versionSearch(params)).rejects.toEqual({
-      message: 'Http Error: Bad credentials',
-      status: 401
+    it('should return {packageVersionExisted: false, packageVersionDeleted: false}', async () => {
+      const actual = await versionSearch(params)
+      expect(actual).toStrictEqual({
+        packageVersionExisted: false,
+        packageVersionDeleted: false
+      })
+
+      expect(
+        getAllPackageVersionsForPackageOwnedByOrgMock
+      ).toHaveBeenCalledTimes(1)
+      expect(deletePackageVersionForOrgMock).toHaveBeenCalledTimes(0)
+    })
+  })
+
+  describe('when package found but version not found', () => {
+    beforeEach(() => {
+      getAllPackageVersionsForPackageOwnedByOrgMock.mockResolvedValue(mockData)
+
+      params = {
+        token: 'someToken',
+        org: 'SomeOrg',
+        packageName: 'SomePackage',
+        packageVersion: '0.99.99',
+        ifExistsErrorDeleteOrNothing: 'nothing'
+      }
+    })
+
+    it('and ifExistsErrorDeleteOrNothing is nothing, should return {packageVersionExisted: false, packageVersionDeleted: false}', async () => {
+      params.ifExistsErrorDeleteOrNothing = 'nothing'
+
+      const actual = await versionSearch(params)
+      expect(actual).toStrictEqual({
+        packageVersionExisted: false,
+        packageVersionDeleted: false
+      })
+
+      expect(
+        getAllPackageVersionsForPackageOwnedByOrgMock
+      ).toHaveBeenCalledTimes(1)
+      expect(deletePackageVersionForOrgMock).toHaveBeenCalledTimes(0)
+    })
+
+    it('and ifExistsErrorDeleteOrNothing is error, should return {packageVersionExisted: false, packageVersionDeleted: false}', async () => {
+      params.ifExistsErrorDeleteOrNothing = 'error'
+
+      const actual = await versionSearch(params)
+      expect(actual).toStrictEqual({
+        packageVersionExisted: false,
+        packageVersionDeleted: false
+      })
+
+      expect(
+        getAllPackageVersionsForPackageOwnedByOrgMock
+      ).toHaveBeenCalledTimes(1)
+      expect(deletePackageVersionForOrgMock).toHaveBeenCalledTimes(0)
+    })
+
+    it('and ifExistsErrorDeleteOrNothing is delete, should return {packageVersionExisted: false, packageVersionDeleted: false}', async () => {
+      params.ifExistsErrorDeleteOrNothing = 'delete'
+
+      const actual = await versionSearch(params)
+      expect(actual).toStrictEqual({
+        packageVersionExisted: false,
+        packageVersionDeleted: false
+      })
+
+      expect(
+        getAllPackageVersionsForPackageOwnedByOrgMock
+      ).toHaveBeenCalledTimes(1)
+      expect(deletePackageVersionForOrgMock).toHaveBeenCalledTimes(0)
+    })
+  })
+
+  describe('when package found and version found', () => {
+    beforeEach(() => {
+      getAllPackageVersionsForPackageOwnedByOrgMock.mockResolvedValue(mockData)
+
+      params = {
+        token: 'someToken',
+        org: 'SomeOrg',
+        packageName: 'SomePackage',
+        packageVersion: '0.60.1',
+        ifExistsErrorDeleteOrNothing: 'nothing'
+      }
+    })
+
+    it('and ifExistsErrorDeleteOrNothing is nothing, should return {packageVersionExisted: true, packageVersionDeleted: false}', async () => {
+      params.ifExistsErrorDeleteOrNothing = 'nothing'
+
+      const actual = await versionSearch(params)
+      expect(actual).toStrictEqual({
+        packageVersionExisted: true,
+        packageVersionDeleted: false
+      })
+
+      expect(
+        getAllPackageVersionsForPackageOwnedByOrgMock
+      ).toHaveBeenCalledTimes(1)
+      expect(deletePackageVersionForOrgMock).toHaveBeenCalledTimes(0)
+    })
+
+    it('and ifExistsErrorDeleteOrNothing is error, should throw error', async () => {
+      params.ifExistsErrorDeleteOrNothing = 'error'
+
+      await expect(async () => versionSearch(params)).rejects.toThrow(
+        'Package version exists'
+      )
+
+      expect(
+        getAllPackageVersionsForPackageOwnedByOrgMock
+      ).toHaveBeenCalledTimes(1)
+      expect(deletePackageVersionForOrgMock).toHaveBeenCalledTimes(0)
+    })
+
+    it('and ifExistsErrorDeleteOrNothing is delete, should return {packageVersionExisted: true, packageVersionDeleted: true}', async () => {
+      params.ifExistsErrorDeleteOrNothing = 'delete'
+
+      const actual = await versionSearch(params)
+      expect(actual).toStrictEqual({
+        packageVersionExisted: true,
+        packageVersionDeleted: true
+      })
+
+      expect(
+        getAllPackageVersionsForPackageOwnedByOrgMock
+      ).toHaveBeenCalledTimes(1)
+      expect(deletePackageVersionForOrgMock).toHaveBeenCalledTimes(1)
     })
   })
 })
