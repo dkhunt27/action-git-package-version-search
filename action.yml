@@ -1,7 +1,10 @@
 name: 'Git Package Version Search'
 description: 'Git action that searches for a published version of a package'
 author: 'dkhunt27'
-icon: arrow-up-circle
+
+branding:
+  icon: 'arrow-up-circle'
+  color: 'blue'
 
 # Define your inputs here.
 inputs:
@@ -32,3 +35,4 @@ outputs:
 runs:
   using: node20
   main: dist/index.js
+
