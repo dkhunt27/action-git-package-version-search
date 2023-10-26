@@ -13,14 +13,28 @@ export async function run(): Promise<void> {
     const org: string = core.getInput('org')
     const packageName: string = core.getInput('packageName')
     const packageVersion: string = core.getInput('packageVersion')
-    const errorIfExists = core.getBooleanInput('errorIfExists')
+    const ifExistsErrorDeleteOrNothing = core.getInput(
+      'ifExistsErrorDeleteOrNothing'
+    )
 
+    if (
+      ifExistsErrorDeleteOrNothing !== 'error' &&
+      ifExistsErrorDeleteOrNothing !== 'delete' &&
+      ifExistsErrorDeleteOrNothing !== 'nothing'
+    ) {
+      throw new Error(
+        `ifExistsErrorDeleteOrNothing (${ifExistsErrorDeleteOrNothing}) must be "error", "delete", or "nothing"`
+      )
+    }
     const params = {
       token,
       org,
       packageName,
       packageVersion,
-      errorIfExists
+      ifExistsErrorDeleteOrNothing: ifExistsErrorDeleteOrNothing as
+        | 'error'
+        | 'delete'
+        | 'nothing'
     }
 
     // Log the current timestamp, wait, then log the new timestamp

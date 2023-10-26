@@ -1,6 +1,6 @@
 # action-git-package-version-search
 
-Git action that searches for a published version of a package
+Git action that searches for a published version of a package and error if the package version exists, delete it if it exists, or do nothing and just report back if it existed or not.
 
 ## Inputs
 
@@ -17,10 +17,19 @@ Git action that searches for a published version of a package
   packageVersion:
     description: 'Version of the package'
     required: true
-  errorIfExists:
-    description: 'If package exists, throw error'
+  ifExistsErrorDeleteOrNothing:
+    description: '"error": throw error if package exist; "delete": delete the package if exist; "nothing": do nothing if package exist'
     required: true
-    type: boolean
+    type: string
+```
+
+## Outputs
+
+```yaml
+  PackageVersionExisted:
+    description: 'true/false if package version existed or not'
+  PackageVersionDeleted:
+    description: 'true/false if package version was deleted or not'
 ```
 
 ## Usage
@@ -29,13 +38,13 @@ Git action that searches for a published version of a package
   
 ```yaml
       - name: Assert git package does not already exist
-        uses: dkhunt27/git-package-version-search
+        uses: dkhunt27/action-git-package-version-search/v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           org: my-org
           packageName: my-package
           packageVersion: 0.45.2
-          errorIfExists: true
+          ifExistsErrorDeleteOrNothing: error
 ```
 
 ## Making changes and pushing releases

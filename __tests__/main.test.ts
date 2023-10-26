@@ -11,7 +11,6 @@ const versionSearchMock = jest
   .spyOn(version, 'versionSearch')
   .mockImplementation()
 const getInputMock = jest.spyOn(core, 'getInput')
-const getBooleanInputMock = jest.spyOn(core, 'getBooleanInput')
 
 describe('main', () => {
   it('calls run when imported', async () => {
@@ -25,16 +24,10 @@ describe('main', () => {
           return 'someToken'
         case 'packageVersion':
           return 'someToken'
+        case 'ifExistsErrorDeleteOrNothing':
+          return 'nothing'
         default:
           throw Error(`Unhandled getInputMock: ${name}`)
-      }
-    })
-    getBooleanInputMock.mockImplementation((name: string): boolean => {
-      switch (name) {
-        case 'errorIfExists':
-          return false
-        default:
-          throw Error(`Unhandled getBooleanInputMock: ${name}`)
       }
     })
 

@@ -57,7 +57,7 @@ jobs:
           org: dkhunt27
           packageName: git-package-version-search
           packageVersion: 0.0.0
-          errorIfExists: false
+          ifExistsErrorDeleteOrNothing: nothing
 
       - name: Print Output
         id: output
