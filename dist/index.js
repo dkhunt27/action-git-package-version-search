@@ -47045,20 +47045,16 @@ exports.versionSearch = void 0;
 const github_1 = __nccwpck_require__(5438);
 const core_1 = __nccwpck_require__(2186);
 const lodash_1 = __nccwpck_require__(250);
-/**
- * Wait for a number of milliseconds.
- * @param milliseconds The number of milliseconds to wait.
- * @returns {Promise<string>} Resolves with 'done!' after the wait is over.
- */
 async function versionSearch(params) {
     const { token, org, packageName, packageVersion, ifExistsErrorDeleteOrNothing } = params;
     let packageVersionExisted = false;
     let packageVersionDeleted = false;
     let logKey = JSON.stringify({ org, packageName });
+    (0, core_1.info)(`****************************************`);
     (0, core_1.info)(`Searching for package version: ${logKey}`);
     const github = (0, github_1.getOctokit)(token).rest;
     try {
-        (0, core_1.info)(`Getting list of published versions`);
+        (0, core_1.info)(`Getting list of published versions for this package`);
         const results = await github.packages.getAllPackageVersionsForPackageOwnedByOrg({
             package_type: 'npm',
             package_name: packageName,
@@ -47082,12 +47078,14 @@ async function versionSearch(params) {
             }
             else if (ifExistsErrorDeleteOrNothing === 'delete') {
                 (0, core_1.warning)(`Deleting existing package: ${logKey}`);
-                await github.packages.deletePackageVersionForOrg({
+                (0, core_1.info)(`packageName: ${packageName}; org: ${org}; packageVersionId: ${found.id}`);
+                const result = await github.packages.deletePackageVersionForOrg({
                     package_type: 'npm',
                     package_name: packageName,
                     org,
                     package_version_id: found.id
                 });
+                (0, core_1.info)(`Delete result status: ${JSON.stringify(result)}`);
                 packageVersionDeleted = true;
             }
         }

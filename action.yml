@@ -33,6 +33,6 @@ outputs:
     description: 'true/false if package version was deleted or not'
 
 runs:
-  using: node20
+  using: node24
   main: dist/index.js
 
