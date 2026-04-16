@@ -7,11 +7,6 @@ import {
 } from '@actions/core'
 import {get as _get} from 'lodash'
 
-/**
- * Wait for a number of milliseconds.
- * @param milliseconds The number of milliseconds to wait.
- * @returns {Promise<string>} Resolves with 'done!' after the wait is over.
- */
 export async function versionSearch(params: {
   token: string
   org: string
@@ -31,12 +26,13 @@ export async function versionSearch(params: {
 
   let logKey = JSON.stringify({org, packageName})
 
+  logInfo(`****************************************`)
   logInfo(`Searching for package version: ${logKey}`)
 
   const github = getOctokit(token).rest
 
   try {
-    logInfo(`Getting list of published versions`)
+    logInfo(`Getting list of published versions for this package`)
 
     const results =
       await github.packages.getAllPackageVersionsForPackageOwnedByOrg({
@@ -67,13 +63,19 @@ export async function versionSearch(params: {
         throw new Error(`Package version exists: ${logKey}`)
       } else if (ifExistsErrorDeleteOrNothing === 'delete') {
         logWarn(`Deleting existing package: ${logKey}`)
+        logInfo(
+          `packageName: ${packageName}; org: ${org}; packageVersionId: ${found.id}`
+        )
 
-        await github.packages.deletePackageVersionForOrg({
+        const result = await github.packages.deletePackageVersionForOrg({
           package_type: 'npm',
           package_name: packageName,
           org,
           package_version_id: found.id
         })
+
+        logInfo(`Delete result status: ${JSON.stringify(result)}`)
+
         packageVersionDeleted = true
       }
     } else {
